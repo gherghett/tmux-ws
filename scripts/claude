@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Claude wrapper for tmux-ws — injects hooks so Claude status appears in sidebar.
+# Only active inside tmux. Outside tmux, passes straight through.
+
+find_real_claude() {
+  local self_dir
+  self_dir="$(cd "$(dirname "$0")" && pwd)"
+  local IFS=:
+  for d in $PATH; do
+    [[ "$d" == "$self_dir" ]] && continue
+    [[ -x "$d/claude" ]] && printf '%s' "$d/claude" && return 0
+  done
+  return 1
+}
+
+REAL_CLAUDE="$(find_real_claude)" || { echo "Error: claude not found in PATH" >&2; exit 127; }
+
+# Not in tmux — pass through
+if [[ -z "$TMUX" ]]; then
+  exec "$REAL_CLAUDE" "$@"
+fi
+
+# Subcommands that don't support hooks — pass through
+case "${1:-}" in
+  mcp|config|api-key) exec "$REAL_CLAUDE" "$@" ;;
+esac
+
+# Prevent nested session detection
+unset CLAUDECODE
+
+# Check if user already specified session flags
+SKIP_SESSION_ID=false
+for arg in "$@"; do
+  case "$arg" in
+    --resume|--resume=*|--session-id|--session-id=*|--continue|-c)
+      SKIP_SESSION_ID=true; break ;;
+  esac
+done
+
+# Build hooks JSON — uses full paths, hooks into UserPromptSubmit/Stop/Notification
+HOOK="/home/daniel/.tmux/scripts/claude-hook.sh"
+HOOKS_JSON='{"hooks":{"UserPromptSubmit":[{"matcher":"","hooks":[{"type":"command","command":"'"$HOOK"' active 2>/dev/null || true","timeout":5}]}],"Stop":[{"matcher":"","hooks":[{"type":"command","command":"'"$HOOK"' stop 2>/dev/null || true","timeout":10}]}],"Notification":[{"matcher":"permission_prompt","hooks":[{"type":"command","command":"'"$HOOK"' notification 2>/dev/null || true","timeout":10}]}]}}'
+
+if [[ "$SKIP_SESSION_ID" == true ]]; then
+  exec "$REAL_CLAUDE" --settings "$HOOKS_JSON" "$@"
+else
+  SESSION_ID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]')"
+  exec "$REAL_CLAUDE" --session-id "$SESSION_ID" --settings "$HOOKS_JSON" "$@"
+fi

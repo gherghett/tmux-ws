@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Refresh sidebar for the session containing this pane.
+# Args: $1=event $2=pane_id $3=status_file
+SESSION=$(tmux display-message -t "%$2" -p '#S' 2>/dev/null)
+[ -n "$SESSION" ] && echo refresh > "/tmp/tmux-ws/fifo-$SESSION" 2>/dev/null

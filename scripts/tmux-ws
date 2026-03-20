@@ -1,19 +1,44 @@
 #!/usr/bin/env bash
-# Launch or attach to the workspace manager
+# tmux-ws — workspace manager launcher.
+# Creates sessions with sidebars, or attaches to existing ones.
+#
+# Usage: tmux-ws [session_name]
+
+SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+SIDEBAR_WIDTH=18
+
+# Create a session with a sidebar pane
+create_session() {
+  local name="$1"
+  local start_dir="${2:-$HOME}"
+
+  tmux new-session -d -s "$name" -c "$start_dir"
+
+  # Create sidebar: split left, fixed width
+  local sidebar
+  sidebar=$(tmux split-window -hb -t "$name:1" -l "$SIDEBAR_WIDTH" \
+    -PF '#{pane_id}' "$SCRIPTS_DIR/sidebar.sh $name")
+
+  # Mark it so we can find it later
+  tmux set-option -p -t "$sidebar" @tmux-ws-role sidebar 2>/dev/null
+
+  # Ensure focus is on the main pane, not the sidebar
+  tmux select-pane -t "$name:1.2" 2>/dev/null
+}
 
 SESSION_NAME="${1:-main}"
 
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
   tmux attach -t "$SESSION_NAME"
 else
-  # Create initial workspace
-  tmux new-session -d -s "$SESSION_NAME"
+  # Create primary session
+  create_session "$SESSION_NAME"
 
-  # Optionally create a few default workspaces
+  # Create default workspaces on first run
   if [ "$SESSION_NAME" = "main" ]; then
-    tmux new-session -d -s "code" -c "$HOME/projects" 2>/dev/null || true
-    tmux new-session -d -s "servers" 2>/dev/null || true
-    tmux new-session -d -s "scratch" 2>/dev/null || true
+    create_session "code" "$HOME/projects"
+    create_session "servers"
+    create_session "scratch"
   fi
 
   tmux attach -t "$SESSION_NAME"
