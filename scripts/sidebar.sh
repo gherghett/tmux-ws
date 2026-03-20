@@ -82,9 +82,7 @@ render() {
   line=1
   output=""
 
-  output+="\033[1;36m WORKSPACES\033[0m"$'\n'
-  ((line++))
-  output+="$(printf '%.0s─' $(seq 1 $((cols - 1))))"$'\n'
+  output+=$'\n'
   ((line++))
 
   while IFS='|' read -r sname swins attached; do
