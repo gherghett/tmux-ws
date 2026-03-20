@@ -2,6 +2,8 @@
 
 Experimental tmux workspace manager — my personal config. Trying to recreate [gherghett/cmux](https://github.com/gherghett/cmux) (itself a reaction to [manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)) using plain tmux + bash scripts.
 
+My opinion is that this was harder to make then the project in zig, and more frustating to debug. Both where basically vibecoded. I think LLM's dont take bash scripting seriously and dont really try to make it work well, they just slap tape on it. I tried instructing it too be serious, and that did help, but it's an uphill battle.
+
 ## Install
 
 ```bash
